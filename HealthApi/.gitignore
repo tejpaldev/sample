@@ -24,9 +24,19 @@ x64/
 x86/
 build/
 bld/
+
+# Bin and Obj directories - explicitly ignore these
 [Bb]in/
 [Oo]bj/
+**/[Bb]in/
+**/[Oo]bj/
+**/bin/**
+**/obj/**
+bin/**
+obj/**
 [Oo]ut/
+
+# Build logs
 msbuild.log
 msbuild.err
 msbuild.wrn
