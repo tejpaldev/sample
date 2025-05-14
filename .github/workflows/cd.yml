@@ -1,0 +1,94 @@
+name: CD Pipeline - OCI ARM64 Deployment
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    branches: [main]
+    types:
+      - completed
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  deploy-to-oci:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install OCI CLI
+      run: |
+        curl -L -O https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh
+        chmod +x install.sh
+        ./install.sh --accept-all-defaults
+        echo "$HOME/bin" >> $GITHUB_PATH
+    
+    - name: Configure OCI CLI
+      run: |
+        mkdir -p ~/.oci
+        echo "${{ secrets.OCI_CONFIG }}" > ~/.oci/config
+        echo "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/oci_api_key.pem
+        chmod 600 ~/.oci/oci_api_key.pem
+        chmod 600 ~/.oci/config
+    
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Get latest image tag
+      id: get_tag
+      run: |
+        LATEST_TAG=$(oci artifacts container repository request-pull \
+          --repository-id ${{ secrets.OCI_REPOSITORY_ID }} \
+          --image-path ghcr.io/${{ github.repository }}/healthapi \
+          --query 'data.tags[0]' --raw-output)
+        echo "IMAGE_TAG=$LATEST_TAG" >> $GITHUB_ENV
+    
+    - name: Deploy to OCI Container Instance (ARM64)
+      run: |
+        oci container-instances create \
+          --compartment-id ${{ secrets.OCI_COMPARTMENT_ID }} \
+          --availability-domain ${{ secrets.OCI_AVAILABILITY_DOMAIN }} \
+          --shape "CI.Standard.A1.Flex" \
+          --shape-config '{"ocpus":1, "memoryInGBs":6}' \
+          --display-name "healthapi-${{ github.run_number }}" \
+          --containers '[{
+            "imageUrl": "ghcr.io/${{ github.repository }}/healthapi:${{ env.IMAGE_TAG }}",
+            "displayName": "healthapi",
+            "environment": {
+              "ASPNETCORE_ENVIRONMENT": "Production"
+            },
+            "resourceConfig": {
+              "vcpus": 1,
+              "memoryInGBs": 2
+            }
+          }]' \
+          --vnics '[{
+            "subnetId": "${{ secrets.OCI_SUBNET_ID }}",
+            "isPublicIpAssigned": true
+          }]'
+    
+    - name: Get Container Instance IP
+      id: get_ip
+      run: |
+        sleep 30  # Wait for instance to be created
+        INSTANCE_OCID=$(oci container-instances list \
+          --compartment-id ${{ secrets.OCI_COMPARTMENT_ID }} \
+          --display-name "healthapi-${{ github.run_number }}" \
+          --query 'data[0].id' --raw-output)
+        
+        PUBLIC_IP=$(oci container-instances get \
+          --container-instance-id $INSTANCE_OCID \
+          --query 'data.vnics[0].publicIp' --raw-output)
+        
+        echo "Deployed to: http://$PUBLIC_IP:80"
+        echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
+    
+    - name: Verify Deployment
+      run: |
+        # Wait for service to be ready
+        sleep 60
+        curl -sSf http://${{ env.PUBLIC_IP }}:80/health || echo "Service not yet available"
