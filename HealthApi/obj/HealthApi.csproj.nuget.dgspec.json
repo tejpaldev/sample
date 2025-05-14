@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Projects\\Crypto\\sample\\HealthApi\\HealthApi.csproj": {}
+    "C:\\Projects\\Crypto\\sample\\HealthApi\\HealthApi.csproj": {}
   },
   "projects": {
-    "c:\\Projects\\Crypto\\sample\\HealthApi\\HealthApi.csproj": {
+    "C:\\Projects\\Crypto\\sample\\HealthApi\\HealthApi.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Projects\\Crypto\\sample\\HealthApi\\HealthApi.csproj",
+        "projectUniqueName": "C:\\Projects\\Crypto\\sample\\HealthApi\\HealthApi.csproj",
         "projectName": "HealthApi",
-        "projectPath": "c:\\Projects\\Crypto\\sample\\HealthApi\\HealthApi.csproj",
+        "projectPath": "C:\\Projects\\Crypto\\sample\\HealthApi\\HealthApi.csproj",
         "packagesPath": "C:\\Users\\tejpa\\.nuget\\packages\\",
-        "outputPath": "c:\\Projects\\Crypto\\sample\\HealthApi\\obj\\",
+        "outputPath": "C:\\Projects\\Crypto\\sample\\HealthApi\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
